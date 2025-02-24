@@ -1,8 +1,9 @@
 import { BackButton } from "@/components/back-button";
 import { FormBuilder } from "@/components/form-builder";
-import { FormService } from "@/lib/form-service";
+import { Loader } from "@/components/loader";
 import { useFetch } from "@/hooks/useFetch";
-import { AbsoluteCenter, Box, Spinner } from "@chakra-ui/react";
+import { FormService } from "@/lib/form-service";
+import { Box } from "@chakra-ui/react";
 import { useCallback } from "react";
 import { useParams } from "react-router";
 
@@ -16,13 +17,7 @@ export function BuildFormPage() {
 
   const { data: formValues, loading } = useFetch(getForm);
 
-  if (loading) {
-    return (
-      <AbsoluteCenter>
-        <Spinner />
-      </AbsoluteCenter>
-    );
-  }
+  if (loading) return <Loader />;
 
   return (
     <Box p={4}>

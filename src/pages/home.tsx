@@ -1,14 +1,15 @@
 import { FormInfoCard } from "@/components/form-info-card";
+import { Loader } from "@/components/loader";
 import { FormService } from "@/lib/form-service";
 import { FormSchemaWithResponses } from "@/lib/types";
 import { generateUUID } from "@/utils";
 import {
+  AbsoluteCenter,
   Box,
   Button,
   Grid,
   Heading,
   IconButton,
-  Spinner,
   VStack,
 } from "@chakra-ui/react";
 import React, { useEffect, useState } from "react";
@@ -39,25 +40,21 @@ export function HomePage() {
     navigate("/build/" + id);
   };
 
-  if (loading) {
-    return (
-      <VStack h="100vh" justifyContent="center" alignItems="center" gap={10}>
-        <Spinner size="xl" />
-      </VStack>
-    );
-  }
+  if (loading) return <Loader />;
 
   return (
     <Box p={5}>
       {forms.length === 0 ? (
-        <VStack h="100vh" justifyContent="center" alignItems="center" gap={10}>
-          <Heading textAlign="center" fontSize="3xl">
-            Build Forms, Simplify Workflows, Empower Users!
-          </Heading>
-          <Button onClick={onCreateForm} size="xl">
-            Get Started
-          </Button>
-        </VStack>
+        <AbsoluteCenter w={"full"}>
+          <VStack gap={10}>
+            <Heading textAlign="center" fontSize="3xl" lineHeight={"moderate"}>
+              Build Forms, Simplify Workflows, Empower Users!
+            </Heading>
+            <Button onClick={onCreateForm} size="xl">
+              Get Started
+            </Button>
+          </VStack>
+        </AbsoluteCenter>
       ) : (
         <React.Fragment>
           <Grid

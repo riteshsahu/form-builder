@@ -1,9 +1,10 @@
 import { AlertInfoCard } from "@/components/alert-info-card";
 import { BackButton } from "@/components/back-button";
 import { FormRenderer } from "@/components/form-renderer";
-import { FormService } from "@/lib/form-service";
+import { Loader } from "@/components/loader";
 import { useFetch } from "@/hooks/useFetch";
-import { AbsoluteCenter, Box, Center, Spinner, VStack } from "@chakra-ui/react";
+import { FormService } from "@/lib/form-service";
+import { Box, Center, VStack } from "@chakra-ui/react";
 import { useCallback } from "react";
 import { useParams } from "react-router";
 export function FillFormPage() {
@@ -16,13 +17,7 @@ export function FillFormPage() {
 
   const { data: formSchema, loading } = useFetch(getForm);
 
-  if (loading) {
-    return (
-      <AbsoluteCenter>
-        <Spinner />
-      </AbsoluteCenter>
-    );
-  }
+  if (loading) return <Loader />;
 
   return (
     <Box p={5} h="full" display="flex" flexDir="column" alignItems="flex-start">
