@@ -1,23 +1,23 @@
-export type FormElementType = "text" | "number" | "select";
+import { NumberType, QuestionType } from "@/constants";
 
 export interface QuestionSchema {
   id: string;
-  type: FormElementType;
-  label: string;
-  required: boolean;
-  placeholder?: string;
+  title?: string;
+  type?: QuestionType;
+  isRequired: boolean;
+  isParagraph?: boolean;
+  defaultValue?: string;
+  helperText?: string;
   options?: string[];
-  validation?: {
-    min?: number;
-    max?: number;
-    pattern?: string;
-  };
+  numberType?: NumberType;
+  min?: string;
+  max?: string;
 }
 
 export interface FormSchema {
   id: string;
   title: string;
-  questions: QuestionSchema[];
+  questions?: QuestionSchema[];
   createdAt?: Date;
 }
 
@@ -25,7 +25,23 @@ export interface FormData {
   [key: string]: string | number;
 }
 
-export interface ValueChange<T = string> {
-  name?: string;
-  value: T;
+export interface AnswerSchema {
+  title?: string;
+  value: string;
+}
+
+export interface FormResponseSchema {
+  id: string;
+  formId: string;
+  title: string;
+  answers?: AnswerSchema[];
+  createdAt?: Date;
+}
+
+export interface FormSchemaWithResponses {
+  id: string;
+  title: string;
+  questions?: QuestionSchema[];
+  createdAt?: Date;
+  responses?: FormResponseSchema[];
 }

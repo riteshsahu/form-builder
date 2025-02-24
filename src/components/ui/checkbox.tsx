@@ -1,4 +1,3 @@
-import { ValueChange } from "@/lib/types";
 import { Checkbox as ChakraCheckbox } from "@chakra-ui/react";
 import * as React from "react";
 
@@ -7,7 +6,7 @@ export interface CheckboxProps
   icon?: React.ReactNode;
   inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
   rootRef?: React.Ref<HTMLLabelElement>;
-  onChange?: (e: ValueChange<boolean>) => void;
+  onChange?: (value: boolean) => void;
 }
 
 export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
@@ -21,10 +20,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         {...rest}
         onCheckedChange={(e) => {
           if (!onChange) return;
-          onChange({
-            name,
-            value: e.checked as boolean,
-          });
+          onChange(e.checked as boolean);
         }}
       >
         <ChakraCheckbox.HiddenInput ref={ref} {...inputProps} />

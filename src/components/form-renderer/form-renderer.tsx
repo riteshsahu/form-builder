@@ -1,53 +1,107 @@
-import { FormService } from "@/lib/form-service";
-import { FormSchema } from "@/lib/types";
-import { Box, Center, Heading, Spinner, VStack } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
+import { FormResponseSchema, FormSchema, QuestionSchema } from "@/lib/types";
+import { Box, Button, Heading, VStack } from "@chakra-ui/react";
 import { QuestionField } from "./question-field";
-import { AlertInfoCard } from "@/components/alert-info-card";
+import { Controller, FormProvider, useForm } from "react-hook-form";
+import { FormService } from "@/lib/form-service";
+import { toaster } from "@/components/ui";
+import { useNavigate } from "react-router";
 
-export function FormRenderer({ id }) {
-  const [form, setForm] = useState<FormSchema | null>(null);
+export function FormRenderer({
+  id,
+  formSchema,
+}: {
+  id: string;
+  formSchema: FormSchema;
+}) {
+  const navigate = useNavigate();
+  const form = useForm<FormResponseSchema>({
+    defaultValues: {
+      answers: formSchema.questions?.map((question) => ({
+        title: question.title,
+        value: question.defaultValue || "",
+      })),
+    },
+  });
 
-  const [loading, setLoading] = useState(true);
+  const onSubmit = async (data: FormResponseSchema) => {
+    try {
+      const response = await FormService.saveFormResponse({
+        ...data,
+        formId: id,
+        title: formSchema.title,
+      });
+      navigate(`/responses/${response.id}?submitted=true`);
+    } catch (error) {
+      toaster.create({
+        title: "Failed to save response",
+        type: "error",
+        id: "save-response-error",
+      });
+      console.error("Failed to save response:", error);
+    }
+  };
 
-  useEffect(() => {
-    const fetchForms = async () => {
-      if (id) {
-        setLoading(true);
-
-        const schema = await FormService.getFormById(id);
-
-        setForm(schema);
-        setLoading(false);
-      }
+  function getValidationRules(question: QuestionSchema) {
+    return {
+      ...(question.isRequired && {
+        required: {
+          value: question.isRequired,
+          message: `This field is required`,
+        },
+      }),
+      ...(question.min && {
+        min: {
+          value: question.min,
+          message: `The value must be at least ${question.min}`,
+        },
+      }),
+      ...(question.max && {
+        max: {
+          value: question.max,
+          message: `The value must be at most ${question.max}`,
+        },
+      }),
     };
-    fetchForms();
-  }, [id]);
-
-  if (loading) {
-    return (
-      <Center justifyContent="center" h="full">
-        <Spinner size="lg" />
-      </Center>
-    );
   }
 
   return (
-    <Box flex={1} w="full">
-      <Heading size="2xl" mb={5}>
-        {form?.title}
-      </Heading>
-      {form ? (
-        <VStack gap={5}>
-          {form.questions.map((question) => (
-            <QuestionField key={question.id} question={question} />
-          ))}
-        </VStack>
-      ) : (
-        <Center justifyContent="center" h="full">
-          <AlertInfoCard title="Form not found" description="The form you are looking for does not exist" />
-        </Center>
-      )}
-    </Box>
+    <FormProvider {...form}>
+      <Box asChild flex={1} w="full" mb={50}>
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate={true}>
+          <Heading size="2xl" mb={5}>
+            {formSchema.title}
+          </Heading>
+          {formSchema.questions?.length && (
+            <VStack gap={5}>
+              {formSchema.questions?.map((question, index) => (
+                <Controller
+                  key={question.id}
+                  name={`answers.${index}.value`}
+                  control={form.control}
+                  rules={getValidationRules(question)}
+                  render={({ field, fieldState }) => (
+                    <QuestionField
+                      question={question}
+                      errorText={fieldState.error?.message}
+                      {...field}
+                    />
+                  )}
+                />
+              ))}
+            </VStack>
+          )}
+          <Box textAlign="right" mt={4}>
+            <Button
+              disabled={form.formState.isSubmitting}
+              loading={form.formState.isSubmitting}
+              type="submit"
+              size="lg"
+            >
+              Submit
+            </Button>
+          </Box>
+        </form>
+      </Box>
+    </FormProvider>
   );
 }

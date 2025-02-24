@@ -1,7 +1,11 @@
-import { Field as ChakraField, Input, InputProps } from "@chakra-ui/react";
+import {
+  Field as ChakraField,
+  Textarea,
+  TextareaProps,
+} from "@chakra-ui/react";
 import { forwardRef } from "react";
 
-export interface TextInputProps extends Omit<InputProps, "onChange"> {
+export interface TextAreaInputProps extends Omit<TextareaProps, "onChange"> {
   label?: React.ReactNode;
   helperText?: React.ReactNode;
   errorText?: React.ReactNode;
@@ -9,7 +13,7 @@ export interface TextInputProps extends Omit<InputProps, "onChange"> {
   onChange?: (value: string) => void;
 }
 
-export const TextInput = forwardRef<HTMLDivElement, TextInputProps>(
+export const TextAreaInput = forwardRef<HTMLDivElement, TextAreaInputProps>(
   function Field(props, ref) {
     const {
       name,
@@ -29,7 +33,7 @@ export const TextInput = forwardRef<HTMLDivElement, TextInputProps>(
             <ChakraField.RequiredIndicator fallback={optionalText} />
           </ChakraField.Label>
         )}
-        <Input
+        <Textarea
           name={name}
           onChange={(e) => {
             if (!onChange) return;

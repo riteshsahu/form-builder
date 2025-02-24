@@ -1,20 +1,21 @@
 import { AlertInfoCard } from "@/components/alert-info-card";
 import { BackButton } from "@/components/back-button";
-import { FormRenderer } from "@/components/form-renderer";
+import { ResponseCard } from "@/components/response-card";
 import { FormService } from "@/lib/form-service";
 import { useFetch } from "@/hooks/useFetch";
 import { AbsoluteCenter, Box, Center, Spinner, VStack } from "@chakra-ui/react";
 import { useCallback } from "react";
 import { useParams } from "react-router";
-export function FillFormPage() {
+
+export function FormAllResponsePage() {
   const { id } = useParams();
 
-  const getForm = useCallback(() => {
+  const gerResponses = useCallback(() => {
     if (!id) return Promise.reject(new Error("No form ID provided"));
-    return FormService.getFormById(id);
+    return FormService.getAllResponsesByFormId(id);
   }, [id]);
 
-  const { data: formSchema, loading } = useFetch(getForm);
+  const { data: responses = [], loading } = useFetch(gerResponses);
 
   if (loading) {
     return (
@@ -28,14 +29,15 @@ export function FillFormPage() {
     <Box p={5} h="full" display="flex" flexDir="column" alignItems="flex-start">
       <BackButton mb={4} lg={{ pos: "absolute" }} />
       <VStack flex="1" maxW={"800px"} alignSelf="center" w="full">
-        {formSchema && id ? (
-          <FormRenderer id={id} formSchema={formSchema} />
+        {responses.length > 0 && id ? (
+          <VStack w={"full"} gap={5}>
+            {responses.map((response) => (
+              <ResponseCard key={response.id} {...response} />
+            ))}
+          </VStack>
         ) : (
           <Center justifyContent="center" h="full">
-            <AlertInfoCard
-              title="Form not found"
-              description="The form you are looking for does not exist"
-            />
+            <AlertInfoCard title="No form response found" />
           </Center>
         )}
       </VStack>

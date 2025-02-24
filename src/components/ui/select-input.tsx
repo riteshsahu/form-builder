@@ -2,10 +2,10 @@ import type { CollectionItem } from "@chakra-ui/react";
 import {
   Select as ChakraSelect,
   createListCollection,
+  Field,
   Portal,
 } from "@chakra-ui/react";
 import * as React from "react";
-import { ValueChange } from "@/lib/types";
 
 type SelectTriggerProps = ChakraSelect.ControlProps;
 
@@ -99,8 +99,6 @@ const SelectRoot = React.forwardRef<HTMLDivElement, ChakraSelect.RootProps>(
   }
 ) as ChakraSelect.RootComponent;
 
-const SelectLabel = ChakraSelect.Label;
-
 type Option = {
   label: string;
   value: string;
@@ -111,43 +109,65 @@ interface SelectProps {
   name?: string;
   value?: string;
   options: Option[];
-  onChange?: (e: ValueChange) => void;
+  onChange?: (value: string) => void;
   placeholder?: string;
+  required?: boolean;
+  helperText?: React.ReactNode;
+  errorText?: React.ReactNode;
+  optionalText?: React.ReactNode;
 }
 
 export const SelectInput = (props: SelectProps) => {
-  const { label, name, options, placeholder, value, onChange, ...rest } = props;
+  const {
+    label,
+    name,
+    required,
+    options,
+    placeholder,
+    value,
+    helperText,
+    errorText,
+    optionalText,
+    onChange,
+    ...rest
+  } = props;
   const collection = React.useMemo(
     () => createListCollection({ items: options || [] }),
     [options]
   );
 
   return (
-    <SelectRoot
-      name={name}
-      collection={collection}
-      {...(value ? { value } : null)}
-      value={value ? [value] : []}
-      onValueChange={(item) => {
-        if (!onChange) return;
-        onChange({
-          name,
-          value: item.value[0],
-        });
-      }}
-      {...rest}
-    >
-      <SelectLabel>{label}</SelectLabel>
-      <SelectTrigger>
-        <SelectValueText placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {collection.items.map((option) => (
-          <SelectItem item={option} key={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </SelectRoot>
+    <Field.Root required={required} invalid={!!errorText}>
+      {label && (
+        <Field.Label>
+          {label}
+          <Field.RequiredIndicator fallback={optionalText} />
+        </Field.Label>
+      )}
+      <SelectRoot
+        name={name}
+        collection={collection}
+        {...(value ? { value: [value] } : null)}
+        onValueChange={(item) => {
+          if (!onChange) return;
+          onChange(item.value[0]);
+        }}
+        required={required}
+        {...rest}
+      >
+        <SelectTrigger>
+          <SelectValueText placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {collection.items.map((option) => (
+            <SelectItem item={option} key={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </SelectRoot>
+      {helperText && <Field.HelperText>{helperText}</Field.HelperText>}
+      {errorText && <Field.ErrorText>{errorText}</Field.ErrorText>}
+    </Field.Root>
   );
 };

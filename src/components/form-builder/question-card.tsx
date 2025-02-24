@@ -1,21 +1,30 @@
-import { Checkbox, NumberInput, SelectInput, TextInput } from "@/components/ui";
+import { QuestionOptions } from "@/components/form-builder/question-options";
+import {
+  Checkbox,
+  NumberInput,
+  SelectInput,
+  TextInput,
+  toaster,
+} from "@/components/ui";
 import { NumberType, QuestionType } from "@/constants";
 import useToggle from "@/hooks/useToggle";
-import { ValueChange } from "@/lib/types";
+import { FormService } from "@/lib/form-service";
+import { FormSchema } from "@/lib/types";
 import { capitalize } from "@/utils";
 import {
   Box,
-  Button,
   Card,
   Collapsible,
   HStack,
   IconButton,
+  Spinner,
   Stack,
   Text,
-  VStack,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
+import { Controller, useFormContext } from "react-hook-form";
 import { LuChevronDown, LuTrash } from "react-icons/lu";
+import { useDebouncedCallback } from "use-debounce";
 
 const questionOptions = Object.values(QuestionType).map((type) => ({
   value: type,
@@ -27,53 +36,124 @@ const numberOptions = Object.values(NumberType).map((type) => ({
   label: capitalize(type),
 }));
 
-export function QuestionCard({ onRemove, onUpdate, ...rest }) {
+export function QuestionCard({
+  formId,
+  index,
+  onRemove,
+}: {
+  formId: string;
+  index: number;
+  onRemove: () => void;
+}) {
   const [isOpen, onToggle] = useToggle(true);
-  const [selectTypeOptions, setSelectTypeOptions] = useState<string[]>([]);
+  const { control, watch, formState } = useFormContext<FormSchema>();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
+  const questionType = watch(`questions.${index}.type`);
+  const questionTitle = watch(`questions.${index}.title`);
+  const questionId = watch(`questions.${index}.id`);
+
+  const questionErrors = formState.errors?.questions?.[index];
+
+  // // Debounce API call to reduce excessive requests
+  const debouncedUpsert = useDebouncedCallback(
+    async (formId, questionId, data) => {
+      setIsUpdating(true); // Start loading
+      try {
+        await FormService.upsertQuestion(formId, questionId, data);
+      } catch (error) {
+        toaster.create({
+          title: "Failed to update question",
+          type: "error",
+          id: "update-question-error",
+        });
+        console.error("Failed to update question:", error);
+      } finally {
+        setIsUpdating(false); // Stop loading
+      }
+    },
+    500
+  );
+
+  // Subscribe to field changes
   useEffect(() => {
-    onUpdate({
-      options: selectTypeOptions.map((option) => ({
-        label: option,
-        value: option,
-      })),
+    const subscription = watch((value, { name }) => {
+      if (name?.startsWith(`questions.${index}`)) {
+        const questionData = value.questions?.[index];
+
+        // only save if question is valid
+        if (questionData?.id && !questionErrors) {
+          debouncedUpsert(formId, questionData.id, questionData);
+        }
+      }
     });
-  }, [selectTypeOptions, onUpdate]);
 
-  const onChange = (e: ValueChange<string | boolean>) => {
-    const { name, value } = e;
-    console.log({ name, value });
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [watch, formId, index, debouncedUpsert, questionErrors]);
 
-    if (name) {
-      onUpdate({ [name]: value });
+  const onRemoveQuestion = async () => {
+    try {
+      setIsDeleting(true);
+      await FormService.deleteQuestion(formId, questionId);
+      onRemove();
+    } catch (error) {
+      toaster.create({
+        title: "Failed to delete question",
+        type: "error",
+        id: "delete-question-error",
+      });
+      console.error("Delete failed:", error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
-    <Box padding={5}>
+    <Box>
       <Collapsible.Root open={isOpen} onOpenChange={onToggle}>
         <Card.Root size={"sm"}>
           <Card.Body cursor={isOpen ? "default" : "pointer"}>
             <Collapsible.Trigger asChild>
-              <HStack>
-                <Box flex="1" onClick={(e) => e.stopPropagation()}>
+              <HStack m={1}>
+                <Box flex="1" onClick={(e) => isOpen && e.stopPropagation()}>
                   {isOpen ? (
-                    <TextInput
-                      label="Question Title"
-                      name="title"
-                      placeholder="Enter Question Title"
-                      value={rest.title}
-                      onChange={onChange}
+                    <Controller
+                      control={control}
+                      name={`questions.${index}.title`}
+                      rules={{ required: true }}
+                      render={({ field }) => (
+                        <TextInput
+                          label="Question Title"
+                          placeholder="Enter question title"
+                          name={field.name}
+                          value={field.value}
+                          onChange={field.onChange}
+                          required={true}
+                        />
+                      )}
                     />
                   ) : (
-                    <Text>{rest.title}</Text>
+                    <Text>{questionTitle}</Text>
                   )}
                 </Box>
                 <HStack mt={isOpen ? "26px" : 0} transition={"all .2s"}>
+                  <Spinner
+                    visibility={isUpdating ? "visible" : "hidden"}
+                    size="sm"
+                    color={"green"}
+                  />
                   <IconButton
-                    onClick={onRemove}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveQuestion();
+                    }}
                     variant={"ghost"}
                     colorPalette={"red"}
+                    loading={isDeleting}
+                    disabled={isDeleting}
                   >
                     <LuTrash />
                   </IconButton>
@@ -89,99 +169,136 @@ export function QuestionCard({ onRemove, onUpdate, ...rest }) {
               </HStack>
             </Collapsible.Trigger>
             <Collapsible.Content>
-              <Stack mt={4} gap={4}>
+              <Stack mt={4} gap={4} m={1}>
                 <HStack alignItems={"center"} gap={5}>
-                  <SelectInput
-                    label="Question Type"
-                    placeholder="Select Type"
-                    name="type"
-                    options={questionOptions}
-                    value={rest.type}
-                    onChange={onChange}
+                  <Controller
+                    control={control}
+                    name={`questions.${index}.type`}
+                    rules={{ required: true }}
+                    render={({ field }) => (
+                      <SelectInput
+                        label="Question Type"
+                        placeholder="Select type"
+                        options={questionOptions}
+                        name={field.name}
+                        value={field.value}
+                        onChange={field.onChange}
+                        required={true}
+                      />
+                    )}
                   />
 
                   <HStack mt="26px" gap={6}>
-                    <Checkbox
-                      name="isRequired"
-                      checked={rest.isRequired}
-                      onChange={onChange}
-                    >
-                      Required
-                    </Checkbox>
-                    <Checkbox
-                      name="isHidden"
-                      checked={rest.isHidden}
-                      onChange={onChange}
-                    >
-                      Hidden
-                    </Checkbox>
+                    <Controller
+                      control={control}
+                      name={`questions.${index}.isRequired`}
+                      render={({ field }) => (
+                        <Checkbox
+                          name={field.name}
+                          checked={field.value}
+                          onChange={field.onChange}
+                        >
+                          Required
+                        </Checkbox>
+                      )}
+                    />
                   </HStack>
                 </HStack>
-                <TextInput
-                  label="Helper Text"
-                  name="helperText"
-                  placeholder="Enter Helper Text"
-                  helperText="Additional Instructions (optional)"
-                  value={rest.helperText}
-                  onChange={onChange}
+
+                <Controller
+                  control={control}
+                  name={`questions.${index}.helperText`}
+                  render={({ field }) => (
+                    <TextInput
+                      label="Helper Text"
+                      placeholder="Enter helper text"
+                      helperText="Additional Instructions (optional)"
+                      name={field.name}
+                      checked={Boolean(field.value)}
+                      onChange={field.onChange}
+                    />
+                  )}
                 />
-                {rest.type === QuestionType.TEXT && (
-                  <Checkbox
-                    name="isParagraph"
-                    checked={rest.isParagraph}
-                    onChange={onChange}
-                  >
-                    Is Paragraph?
-                  </Checkbox>
+
+                <Controller
+                  control={control}
+                  name={`questions.${index}.defaultValue`}
+                  render={({ field }) => (
+                    <TextInput
+                      label="Initial Value"
+                      placeholder="Enter initial value"
+                      name={field.name}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+
+                {questionType === QuestionType.TEXT && (
+                  <Controller
+                    control={control}
+                    name={`questions.${index}.isParagraph`}
+                    render={({ field }) => (
+                      <Checkbox
+                        name={field.name}
+                        checked={field.value}
+                        onChange={field.onChange}
+                      >
+                        Is Paragraph?
+                      </Checkbox>
+                    )}
+                  />
                 )}
-                {rest.type === QuestionType.NUMBER && (
+                {questionType === QuestionType.NUMBER && (
                   <HStack gap={4}>
-                    <SelectInput
-                      label="Number Type"
-                      name="numberType"
-                      options={numberOptions}
-                      value={rest.numberType}
-                      onChange={onChange}
+                    <Controller
+                      control={control}
+                      name={`questions.${index}.numberType`}
+                      rules={{ required: true }}
+                      render={({ field }) => (
+                        <SelectInput
+                          label="Number Type"
+                          placeholder="Select type"
+                          options={numberOptions}
+                          name={field.name}
+                          value={field.value}
+                          onChange={field.onChange}
+                          required={true}
+                        />
+                      )}
                     />
 
-                    <NumberInput
-                      label="Min"
-                      name="min"
-                      value={rest.min}
-                      placeholder="Enter Min"
-                      onChange={onChange}
+                    <Controller
+                      control={control}
+                      name={`questions.${index}.min`}
+                      render={({ field }) => (
+                        <NumberInput
+                          label="Min"
+                          placeholder="Enter min"
+                          name={field.name}
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      )}
                     />
-                    <NumberInput
-                      label="Max"
-                      name="max"
-                      value={rest.max}
-                      placeholder="Enter Max"
-                      onChange={onChange}
+
+                    <Controller
+                      control={control}
+                      name={`questions.${index}.max`}
+                      render={({ field }) => (
+                        <NumberInput
+                          label="Max"
+                          placeholder="Enter max"
+                          name={field.name}
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      )}
                     />
                   </HStack>
                 )}
-                {rest.type === QuestionType.SELECT && (
-                  <VStack gap={4}>
-                    {selectTypeOptions.map((option, optionIndex) => (
-                      <TextInput
-                        key={optionIndex}
-                        value={option}
-                        onChange={(e) => {
-                          const newOptions = [...selectTypeOptions];
-                          newOptions[optionIndex] = e.value;
-                          setSelectTypeOptions(newOptions);
-                        }}
-                      />
-                    ))}
-                    <Button
-                      alignSelf="flex-end"
-                      onClick={() =>
-                        setSelectTypeOptions([...selectTypeOptions, ""])
-                      }
-                    >
-                      Add Option
-                    </Button>
-                  </VStack>
+                {questionType === QuestionType.SELECT && (
+                  <QuestionOptions questinIndex={index} />
                 )}
               </Stack>
             </Collapsible.Content>
