@@ -16,6 +16,7 @@ import {
   Card,
   Collapsible,
   HStack,
+  Icon,
   IconButton,
   Spinner,
   Stack,
@@ -23,6 +24,7 @@ import {
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
+import { FaCheck } from "react-icons/fa";
 import { LuChevronDown, LuTrash } from "react-icons/lu";
 import { useDebouncedCallback } from "use-debounce";
 
@@ -49,6 +51,7 @@ export function QuestionCard({
   const { control, watch, formState } = useFormContext<FormSchema>();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const questionType = watch(`questions.${index}.type`);
   const questionTitle = watch(`questions.${index}.title`);
@@ -62,6 +65,9 @@ export function QuestionCard({
       setIsUpdating(true); // Start loading
       try {
         await FormService.upsertQuestion(formId, questionId, data);
+
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 1000);
       } catch (error) {
         toaster.create({
           title: "Failed to update question",
@@ -145,6 +151,11 @@ export function QuestionCard({
                     size="sm"
                     color={"green"}
                   />
+                  {success && (
+                    <Icon color="green" pos={"absolute"}>
+                      <FaCheck />
+                    </Icon>
+                  )}
                   <IconButton
                     onClick={(e) => {
                       e.stopPropagation();
