@@ -48,7 +48,7 @@ export function QuestionCard({
   onRemove: () => void;
 }) {
   const [isOpen, onToggle] = useToggle(true);
-  const { control, watch, formState } = useFormContext<FormSchema>();
+  const { control, watch, trigger } = useFormContext<FormSchema>();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -56,8 +56,6 @@ export function QuestionCard({
   const questionType = watch(`questions.${index}.type`);
   const questionTitle = watch(`questions.${index}.title`);
   const questionId = watch(`questions.${index}.id`);
-
-  const questionErrors = formState.errors?.questions?.[index];
 
   // // Debounce API call to reduce excessive requests
   const debouncedUpsert = useDebouncedCallback(
@@ -88,17 +86,19 @@ export function QuestionCard({
       if (name?.startsWith(`questions.${index}`)) {
         const questionData = value.questions?.[index];
 
-        // only save if question is valid
-        if (questionData?.id && !questionErrors) {
-          debouncedUpsert(formId, questionData.id, questionData);
-        }
+        trigger(`questions.${index}`).then((isValid) => {
+          // only save if question is valid
+          if (questionData?.id && isValid) {
+            debouncedUpsert(formId, questionData.id, questionData);
+          }
+        });
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [watch, formId, index, debouncedUpsert, questionErrors]);
+  }, [watch, formId, index, debouncedUpsert, trigger]);
 
   const onRemoveQuestion = async () => {
     try {

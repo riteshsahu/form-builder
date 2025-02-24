@@ -36,6 +36,7 @@ export function FormBuilder({
       title: values?.title,
       questions: values?.questions ?? [],
     },
+    mode: "onChange",
   });
 
   const { fields, append, remove } = useFieldArray({
