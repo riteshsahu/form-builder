@@ -33,3 +33,6 @@ export const getFormatOptions = (
       return { style: "currency", currency: "USD" };
   }
 };
+
+export const delay = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));

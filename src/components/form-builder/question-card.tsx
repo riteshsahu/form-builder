@@ -10,7 +10,7 @@ import { NumberType, QuestionType } from "@/constants";
 import useToggle from "@/hooks/useToggle";
 import { FormService } from "@/lib/form-service";
 import { FormSchema } from "@/lib/types";
-import { capitalize } from "@/utils";
+import { capitalize, delay } from "@/utils";
 import {
   Box,
   Card,
@@ -48,7 +48,7 @@ export function QuestionCard({
   onRemove: () => void;
 }) {
   const [isOpen, onToggle] = useToggle(true);
-  const { control, watch, trigger } = useFormContext<FormSchema>();
+  const { control, watch, trigger, unregister } = useFormContext<FormSchema>();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -82,7 +82,8 @@ export function QuestionCard({
 
   // Subscribe to field changes
   useEffect(() => {
-    const subscription = watch((value, { name }) => {
+    const subscription = watch(async (value, { name }) => {
+      await delay(50);
       if (name?.startsWith(`questions.${index}`)) {
         const questionData = value.questions?.[index];
 
@@ -105,6 +106,7 @@ export function QuestionCard({
       setIsDeleting(true);
       await FormService.deleteQuestion(formId, questionId);
       onRemove();
+      unregister(`questions.${index}`);
     } catch (error) {
       toaster.create({
         title: "Failed to delete question",
@@ -151,7 +153,7 @@ export function QuestionCard({
                     size="sm"
                     color={"green"}
                   />
-                  {success && (
+                  {success && !isUpdating && (
                     <Icon color="green" pos={"absolute"}>
                       <FaCheck />
                     </Icon>

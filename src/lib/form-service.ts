@@ -1,4 +1,4 @@
-import { generateUUID } from "@/utils";
+import { delay, generateUUID } from "@/utils";
 import type {
   FormResponseSchema,
   FormSchema,
@@ -11,8 +11,6 @@ const FORM_TABLE_NAME = `${DATABASE_NAME}_forms`;
 const RESPONSE_TABLE_NAME = `${DATABASE_NAME}_responses`;
 
 const API_DELAY = 500;
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const FormService = {
   async getAllForms(): Promise<FormSchema[]> {
